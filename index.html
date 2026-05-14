@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>心理健康评估问卷</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card-bg: #ffffff;
+    --text: #2c3e50;
+    --text-secondary: #7f8c8d;
+    --accent: #3498db;
+    --accent-hover: #2980b9;
+    --border: #e0e4e8;
+    --progress-bg: #e8ecf0;
+    --progress-fill: #3498db;
+    --option-bg: #fafbfc;
+    --option-hover: #eef4fb;
+    --option-selected: #e3f0fc;
+    --option-selected-border: #3498db;
+    --danger: #e74c3c;
+    --shadow: 0 2px 16px rgba(0,0,0,0.06);
+    --transition-speed: 0.8s;
+    --body-font: 'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: var(--body-font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--transition-speed), color var(--transition-speed);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 640px;
+    padding: 24px;
+  }
+
+  .card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 40px 36px;
+    box-shadow: var(--shadow);
+    transition: all var(--transition-speed);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .header .logo {
+    font-size: 13px;
+    color: var(--text-secondary);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    transition: color var(--transition-speed);
+  }
+
+  .header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    transition: color var(--transition-speed);
+  }
+
+  .header .subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: color var(--transition-speed);
+  }
+
+  .progress-wrap {
+    margin-bottom: 28px;
+  }
+
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    transition: color var(--transition-speed);
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: var(--progress-bg);
+    border-radius: 2px;
+    overflow: hidden;
+    transition: background var(--transition-speed);
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--progress-fill);
+    border-radius: 2px;
+    transition: width 0.5s cubic-bezier(0.4,0,0.2,1), background var(--transition-speed);
+  }
+
+  .question-area {
+    min-height: 200px;
+    transition: opacity 0.3s;
+  }
+
+  .question-area.transitioning {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  .q-number {
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    transition: color var(--transition-speed);
+  }
+
+  .q-title {
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.7;
+    margin-bottom: 24px;
+    transition: color var(--transition-speed);
+  }
+
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .option {
+    display: flex;
+    align-items: center;
+    padding: 14px 18px;
+    background: var(--option-bg);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.25s;
+    font-size: 15px;
+    position: relative;
+  }
+
+  .option:hover {
+    background: var(--option-hover);
+    border-color: var(--accent);
+  }
+
+  .option.selected {
+    background: var(--option-selected);
+    border-color: var(--option-selected-border);
+  }
+
+  .option .radio {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    margin-right: 12px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s;
+  }
+
+  .option.selected .radio {
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+
+  .option.selected .radio::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+  }
+
+  .nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 32px;
+    gap: 12px;
+  }
+
+  .btn {
+    padding: 10px 28px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.25s;
+    font-family: var(--body-font);
+    letter-spacing: 0.5px;
+  }
+
+  .btn-prev {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  .btn-prev:hover {
+    background: var(--option-bg);
+  }
+
+  .btn-next {
+    background: var(--accent);
+    color: #fff;
+    margin-left: auto;
+  }
+
+  .btn-next:hover {
+    background: var(--accent-hover);
+  }
+
+  .btn-next:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-prev:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  /* Glitch effects */
+  .glitch-text {
+    animation: glitch 0.3s ease;
+  }
+
+  @keyframes glitch {
+    0%   { transform: translate(0); }
+    20%  { transform: translate(-3px, 2px); }
+    40%  { transform: translate(3px, -1px); text-shadow: -2px 0 #ff000033, 2px 0 #0000ff33; }
+    60%  { transform: translate(-2px, -2px); }
+    80%  { transform: translate(2px, 1px); text-shadow: 2px 0 #ff000033, -2px 0 #0000ff33; }
+    100% { transform: translate(0); }
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    41%  { opacity: 1; }
+    42%  { opacity: 0.3; }
+    43%  { opacity: 1; }
+    45%  { opacity: 0.6; }
+    46%  { opacity: 1; }
+    72%  { opacity: 1; }
+    73%  { opacity: 0.2; }
+    74%  { opacity: 1; }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%  { transform: translateX(-4px); }
+    30%  { transform: translateX(4px); }
+    50%  { transform: translateX(-3px); }
+    70%  { transform: translateX(2px); }
+    90%  { transform: translateX(-1px); }
+  }
+
+  @keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(231,76,60,0.4); }
+    50%  { box-shadow: 0 0 0 12px rgba(231,76,60,0); }
+  }
+
+  @keyframes textFadeLoop {
+    0%, 100% { opacity: 0.8; }
+    50%  { opacity: 0.2; }
+  }
+
+  .shake { animation: shake 0.5s ease; }
+
+  .hidden-message {
+    color: transparent;
+    transition: color 0.3s;
+    user-select: all;
+    -webkit-user-select: all;
+  }
+
+  .hidden-message::selection {
+    color: var(--danger);
+    background: rgba(231,76,60,0.1);
+  }
+
+  .hidden-message::-moz-selection {
+    color: var(--danger);
+    background: rgba(231,76,60,0.1);
+  }
+
+  .text-input {
+    width: 100%;
+    padding: 14px 18px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    font-family: var(--body-font);
+    background: var(--option-bg);
+    color: var(--text);
+    transition: all 0.25s;
+    outline: none;
+  }
+
+  .text-input:focus {
+    border-color: var(--accent);
+    background: var(--option-selected);
+  }
+
+  .special-notice {
+    background: var(--option-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text-secondary);
+    transition: all var(--transition-speed);
+  }
+
+  .result-page {
+    text-align: center;
+  }
+
+  .result-page .big-text {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    transition: color var(--transition-speed);
+  }
+
+  .counter {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @keyframes scanline {
+    0%   { top: -100%; }
+    100% { top: 100%; }
+  }
+
+  .scanline-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: rgba(0,0,0,0.06);
+    z-index: 9999;
+    pointer-events: none;
+    animation: scanline 8s linear infinite;
+    opacity: 0;
+    transition: opacity 2s;
+  }
+
+  .scanline-overlay.visible { opacity: 1; }
+
+  @media (max-width: 480px) {
+    .card { padding: 28px 20px; border-radius: 12px; }
+    .header h1 { font-size: 19px; }
+    .q-title { font-size: 16px; }
+    .option { padding: 12px 14px; font-size: 14px; }
+    .btn { padding: 10px 20px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="scanline-overlay" id="scanline"></div>
+
+<div class="container">
+  <div class="card" id="card">
+    <div class="header">
+      <div class="logo" id="logoText">心理评估中心</div>
+      <h1 id="headerTitle">心理健康评估问卷</h1>
+      <div class="subtitle" id="subtitle">请根据您的实际情况如实作答</div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-info">
+        <span id="progressLabel">第 <span id="currentQ">1</span> 题 / 共 <span id="totalQ">18</span> 题</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="question-area" id="questionArea"></div>
+
+    <div class="nav">
+      <button class="btn btn-prev" id="btnPrev" disabled>上一题</button>
+      <button class="btn btn-next" id="btnNext" disabled>下一题</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+
+const TOTAL_QUESTIONS = 18;
+let currentIndex = 0;
+let answers = {};
+let phaseTimers = [];
+let globalPhase = 1;
+let glitchCount = 0;
+
+// ==================== QUESTION DATA ====================
+const questions = [
+  // ---- Phase 1: 正常问卷 (0-4) ----
+  {
+    title: '您的性别是？',
+    type: 'radio',
+    options: ['男', '女', '不便透露'],
+  },
+  {
+    title: '您的年龄段是？',
+    type: 'radio',
+    options: ['18岁以下', '18-25岁', '26-35岁', '36-50岁', '50岁以上'],
+  },
+  {
+    title: '最近一周，您的日均睡眠时长约为？',
+    type: 'radio',
+    options: ['不足4小时', '4-6小时', '6-8小时', '8小时以上'],
+  },
+  {
+    title: '您是否经常感到无明显原因的焦虑或不安？',
+    type: 'radio',
+    options: ['几乎没有', '偶尔会有', '经常出现', '几乎每天都这样'],
+  },
+  {
+    title: '您相信自己的记忆是可靠的吗？',
+    type: 'radio',
+    options: ['完全相信', '大部分时候可靠', '偶尔怀疑', '我不确定什么才是真的'],
+    hiddenText: '你有没有想过——那些你\"记得\"的事情，也许从未发生过？',
+  },
+
+  // ---- Phase 2: 逐渐不安 (5-9) ----
+  {
+    title: '您是否曾在半梦半醒之间，感觉有人站在床边看着你？',
+    type: 'radio',
+    options: ['从未有过', '有过一两次', '偶尔发生', '经常如此'],
+    phase: 2,
+  },
+  {
+    title: '深夜独自在家时，您会反复检查门窗是否锁好吗？',
+    type: 'radio',
+    options: ['从不检查', '偶尔会检查', '每次都会检查', '检查很多遍，还是不确定'],
+    phase: 2,
+  },
+  {
+    title: '您有没有过这样的经历——东西明明放在那里，转头就不见了，再回头又出现了？',
+    type: 'radio',
+    options: ['从未有过', '好像有过', '确实发生过', '经常发生……'],
+    phase: 2,
+  },
+  {
+    title: '小时候，家里长辈是否告诫过您——半夜不要照镜子、不要吹口哨、不要梳头？',
+    type: 'radio',
+    options: ['没听过', '好像听过', '确实被叮嘱过', '不仅听过，我还知道为什么……'],
+    phase: 2,
+  },
+  {
+    title: '如果此刻——您听到身后传来脚步声，但家里只有您一个人。您会回头吗？',
+    type: 'radio',
+    options: ['当然会回头确认', '可能会犹豫一下', '不敢回头', '我……听到过'],
+    phase: 2,
+    effect: 'flicker',
+  },
+
+  // ---- Phase 3: 规则入侵 (10-13) ----
+  {
+    title: '您注意到了吗？这行文字——<br>在您读它的时候，正在悄悄地<span style="animation:textFadeLoop 1.5s ease-in-out infinite">变化</span>。',
+    type: 'statement',
+    phase: 3,
+    effect: 'glitch',
+    hiddenText: '你发现了。但发现又能怎样呢？',
+  },
+  {
+    title: '请仔细看下面的选项。选出正确的那个。',
+    type: 'radio',
+    options: ['我确定我是一个人', '我应该是一个人', '我不确定', '不止我一个'],
+    phase: 3,
+    effect: 'cursor',
+    hiddenText: '她就在你身后。',
+  },
+  {
+    title: '关于"红衣男孩"的故事，您听说过吗？',
+    type: 'radio',
+    options: ['从未听说', '略有耳闻', '知道一些', '我不仅知道……我还梦到过'],
+    phase: 3,
+  },
+  {
+    title: '据说——纸人画上眼睛，就会活过来。您知道为什么不能画眼睛吗？',
+    type: 'radio',
+    options: ['只是迷信罢了', '因为眼睛是灵魂的入口', '因为……会看见不该看的东西', '我不想回答这个问题'],
+    phase: 3,
+    effect: 'shake',
+  },
+
+  // ---- Phase 4: 崩塌 (14-17) ----
+  {
+    title: '您有没有想过——也许问卷知道的事情，比您自己还多？',
+    type: 'radio',
+    options: ['这不可能', '你在说什么……', '……', '你究竟是谁？'],
+    phase: 4,
+    effect: 'glitch',
+  },
+  {
+    title: '刚才第<span style="color:var(--danger)">' + (Math.floor(Math.random()*9+5)) + '</span>题——您选的答案是？<br><span style="font-size:13px;color:var(--text-secondary)">（您确定您选过吗？）</span>',
+    type: 'radio',
+    options: ['我记得选过', '不记得了', '那题……好像不一样了', '——'],
+    phase: 4,
+    effect: 'shake',
+  },
+  {
+    title: '最后一个问题了。<br><br>请告诉我——<br><span style="font-size:20px;font-weight:600;">你是谁？</span>',
+    type: 'text',
+    placeholder: '输入您的名字……',
+    phase: 4,
+  },
+  {
+    title: '请——<br><br><span style="font-size:24px;font-weight:700;color:var(--danger)">回头看。</span>',
+    type: 'statement',
+    phase: 4,
+    effect: 'glitch',
+    isFinal: true,
+  },
+];
+
+// ==================== DOM REFS ====================
+const $questionArea = document.getElementById('questionArea');
+const $btnPrev = document.getElementById('btnPrev');
+const $btnNext = document.getElementById('btnNext');
+const $currentQ = document.getElementById('currentQ');
+const $totalQ = document.getElementById('totalQ');
+const $progressPercent = document.getElementById('progressPercent');
+const $progressFill = document.getElementById('progressFill');
+const $card = document.getElementById('card');
+const $scanline = document.getElementById('scanline');
+const $logoText = document.getElementById('logoText');
+const $headerTitle = document.getElementById('headerTitle');
+const $subtitle = document.getElementById('subtitle');
+const $progressLabel = document.getElementById('progressLabel');
+
+$totalQ.textContent = TOTAL_QUESTIONS;
+
+// ==================== PHASE TRANSITIONS ====================
+function applyPhaseVisuals(phase) {
+  const root = document.documentElement.style;
+  const body = document.body;
+
+  const phases = {
+    1: { bg:'#f5f6f8', cardBg:'#ffffff', text:'#2c3e50', textSec:'#7f8c8d', accent:'#3498db', accentH:'#2980b9', border:'#e0e4e8', progBg:'#e8ecf0', progFill:'#3498db', optBg:'#fafbfc', optHover:'#eef4fb', optSel:'#e3f0fc', optSelB:'#3498db', shadow:'0 2px 16px rgba(0,0,0,0.06)', logo:'心理评估中心', title:'心理健康评估问卷', sub:'请根据您的实际情况如实作答' },
+    2: { bg:'#f3f1ee', cardBg:'#fefdfb', text:'#3a3530', textSec:'#8c8580', accent:'#8b7355', accentH:'#6b5a45', border:'#e5ded5', progBg:'#e8e2d9', progFill:'#8b7355', optBg:'#faf8f5', optHover:'#f5f0e8', optSel:'#f0e8d8', optSelB:'#8b7355', shadow:'0 2px 16px rgba(0,0,0,0.07)', logo:'心理评估中心', title:'心理健康评估问卷', sub:'请继续……还差一点就完成了' },
+    3: { bg:'#2a2520', cardBg:'#332e29', text:'#c8c0b8', textSec:'#9a928a', accent:'#b8423a', accentH:'#9a352e', border:'#4a423a', progBg:'#3d3630', progFill:'#b8423a', optBg:'#38322c', optHover:'#403a33', optSel:'#3d302a', optSelB:'#b8423a', shadow:'0 2px 24px rgba(0,0,0,0.3)', logo:'—— · ——', title:'……问卷', sub:'你真的在看这些问题吗？' },
+    4: { bg:'#1a1512', cardBg:'#221c18', text:'#c8b8a8', textSec:'#8a7a6a', accent:'#c0392b', accentH:'#a93226', border:'#3a2a1a', progBg:'#2a1f18', progFill:'#c0392b', optBg:'#2a1f18', optHover:'#32261e', optSel:'#352018', optSelB:'#c0392b', shadow:'0 4px 32px rgba(192,57,43,0.15)', logo:'别回头', title:'她 在 看 着 你', sub:'——' },
+  };
+
+  const p = phases[phase] || phases[1];
+  root.setProperty('--bg', p.bg);
+  root.setProperty('--card-bg', p.cardBg);
+  root.setProperty('--text', p.text);
+  root.setProperty('--text-secondary', p.textSec);
+  root.setProperty('--accent', p.accent);
+  root.setProperty('--accent-hover', p.accentH);
+  root.setProperty('--border', p.border);
+  root.setProperty('--progress-bg', p.progBg);
+  root.setProperty('--progress-fill', p.progFill);
+  root.setProperty('--option-bg', p.optBg);
+  root.setProperty('--option-hover', p.optHover);
+  root.setProperty('--option-selected', p.optSel);
+  root.setProperty('--option-selected-border', p.optSelB);
+  root.setProperty('--shadow', p.shadow);
+  root.setProperty('--danger', phase >= 3 ? '#c0392b' : '#e74c3c');
+
+  $logoText.textContent = p.logo;
+  $headerTitle.textContent = p.title;
+  $subtitle.textContent = p.sub;
+  document.title = phase >= 3 ? '……' : (phase >= 2 ? '问卷进行中' : '心理健康评估问卷');
+
+  // Scanline in phase 3+
+  if (phase >= 3) {
+    $scanline.classList.add('visible');
+  } else {
+    $scanline.classList.remove('visible');
+  }
+
+  // Cursor effects in phase 4
+  if (phase >= 4) {
+    body.style.cursor = 'none';
+    setTimeout(() => { body.style.cursor = 'auto'; }, 1500);
+  }
+}
+
+// ==================== RENDER QUESTION ====================
+function renderQuestion(idx) {
+  const q = questions[idx];
+  const phase = q.phase || Math.ceil((idx+1) / 5);
+  globalPhase = phase;
+
+  applyPhaseVisuals(phase);
+
+  // Update progress
+  const pct = Math.round(((idx) / TOTAL_QUESTIONS) * 100);
+  $currentQ.textContent = idx + 1;
+  $progressPercent.textContent = pct + '%';
+  $progressFill.style.width = pct + '%';
+
+  // Progress label changes in later phases
+  if (phase >= 3) {
+    $progressLabel.innerHTML = '第 <span id="currentQ">' + (idx+1) + '</span> 题 / 共 <span id="totalQ">' + TOTAL_QUESTIONS + '</span> 题';
+  }
+
+  let html = '';
+  html += '<div class="q-number">Q' + (idx + 1) + '</div>';
+  html += '<div class="q-title" id="qTitle">' + q.title + '</div>';
+
+  if (q.type === 'radio') {
+    html += '<div class="options">';
+    q.options.forEach((opt, i) => {
+      const selected = answers[idx] === i;
+      html += '<div class="option' + (selected ? ' selected' : '') + '" data-opt="' + i + '">';
+      html += '<span class="radio"></span>';
+      html += '<span>' + opt + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  } else if (q.type === 'text') {
+    html += '<input class="text-input" id="textInput" type="text" placeholder="' + (q.placeholder || '请输入……') + '" value="' + (answers[idx] || '') + '">';
+  } else if (q.type === 'statement') {
+    html += '<div class="special-notice">' + (q.notice || '请仔细阅读以上内容。') + '</div>';
+  }
+
+  if (q.hiddenText) {
+    html += '<p class="hidden-message" style="margin-top:16px;font-size:13px;text-align:center;">' + q.hiddenText + '</p>';
+  }
+
+  $questionArea.innerHTML = html;
+  $questionArea.classList.remove('transitioning');
+
+  // Bind events
+  if (q.type === 'radio') {
+    $questionArea.querySelectorAll('.option').forEach(el => {
+      el.addEventListener('click', function() {
+        const optIdx = parseInt(this.dataset.opt);
+        answers[idx] = optIdx;
+        // Re-render selected states
+        $questionArea.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+        this.classList.add('selected');
+        $btnNext.disabled = false;
+
+        // Easter egg: last option on certain phase 3+ questions triggers effects
+        if (phase >= 3 && optIdx === q.options.length - 1) {
+          triggerDisturbance();
+        }
+      });
+    });
+  } else if (q.type === 'text') {
+    const input = document.getElementById('textInput');
+    if (input) {
+      input.addEventListener('input', function() {
+        answers[idx] = this.value;
+        $btnNext.disabled = !this.value.trim();
+      });
+      input.focus();
+      $btnNext.disabled = !(answers[idx] && answers[idx].trim());
+    }
+  } else if (q.type === 'statement') {
+    $btnNext.disabled = false;
+  }
+
+  // Apply question-level effects
+  if (q.effect === 'glitch') {
+    triggerGlitch();
+  } else if (q.effect === 'flicker') {
+    triggerFlicker();
+  } else if (q.effect === 'shake') {
+    setTimeout(() => $card.classList.add('shake'), 1200);
+    setTimeout(() => $card.classList.remove('shake'), 1800);
+  }
+
+  // Update nav buttons
+  $btnPrev.disabled = idx === 0;
+  if (q.isFinal) {
+    $btnNext.textContent = '——';
+    $btnNext.style.background = 'var(--danger)';
+    $btnNext.style.animation = 'pulse-red 2s infinite';
+  } else {
+    $btnNext.textContent = '下一题';
+    $btnNext.style.background = '';
+    $btnNext.style.animation = '';
+  }
+
+  // Restore selection state for radio
+  if (q.type === 'radio' && answers[idx] !== undefined) {
+    $btnNext.disabled = false;
+  }
+}
+
+// ==================== DISTURBANCE EFFECTS ====================
+function triggerGlitch() {
+  const title = document.getElementById('qTitle');
+  if (title) {
+    title.classList.add('glitch-text');
+    setTimeout(() => title.classList.remove('glitch-text'), 350);
+  }
+}
+
+function triggerFlicker() {
+  document.body.style.animation = 'flicker 1.5s ease';
+  setTimeout(() => { document.body.style.animation = ''; }, 1500);
+}
+
+function triggerDisturbance() {
+  glitchCount++;
+
+  // Random disturbance
+  const disturbances = [
+    () => {
+      // Progress bar jumps backward
+      const fakePct = Math.max(0, Math.round(((currentIndex) / TOTAL_QUESTIONS) * 100) - Math.floor(Math.random() * 20 + 10));
+      $progressFill.style.width = fakePct + '%';
+      $progressPercent.textContent = fakePct + '%';
+      setTimeout(() => {
+        const realPct = Math.round(((currentIndex) / TOTAL_QUESTIONS) * 100);
+        $progressFill.style.width = realPct + '%';
+        $progressPercent.textContent = realPct + '%';
+      }, 800 + Math.random() * 1200);
+    },
+
+    () => {
+      // Page title flickers to something else
+      const orig = document.title;
+      document.title = '回头看';
+      setTimeout(() => { document.title = orig; }, 600);
+    },
+
+    () => {
+      // Brief body shake
+      document.body.style.transform = 'translate(' + (Math.random()*4-2) + 'px,' + (Math.random()*4-2) + 'px)';
+      setTimeout(() => { document.body.style.transform = ''; }, 150);
+    },
+
+    () => {
+      // Card border flashes red
+      $card.style.borderColor = '#c0392b';
+      setTimeout(() => { $card.style.borderColor = ''; }, 400);
+    },
+
+    () => {
+      // Fake "someone is watching" message flash
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;pointer-events:none;display:flex;align-items:center;justify-content:center;';
+      overlay.innerHTML = '<span style="font-size:48px;color:rgba(192,57,43,0.6);font-weight:700;letter-spacing:4px;">你 不 是 一 个 人</span>';
+      document.body.appendChild(overlay);
+      setTimeout(() => { overlay.remove(); }, 800 + Math.random() * 500);
+    },
+  ];
+
+  // Phase 4: more intense
+  if (globalPhase >= 4) {
+    disturbances.push(
+      () => {
+        document.body.style.filter = 'invert(0.8)';
+        setTimeout(() => { document.body.style.filter = ''; }, 120);
+      },
+      () => {
+        const cardRect = $card.getBoundingClientRect();
+        $card.style.transform = 'rotate(' + (Math.random()*1.5-0.75) + 'deg)';
+        setTimeout(() => { $card.style.transform = ''; }, 200);
+      },
+    );
+  }
+
+  const dist = disturbances[Math.floor(Math.random() * disturbances.length)];
+  dist();
+
+  // Chain more disturbances in phase 4
+  if (globalPhase >= 4 && Math.random() > 0.5) {
+    setTimeout(() => {
+      const d2 = disturbances[Math.floor(Math.random() * disturbances.length)];
+      d2();
+    }, 1500 + Math.random() * 2000);
+  }
+}
+
+// ==================== NAVIGATION ====================
+function goToQuestion(idx) {
+  if (idx < 0 || idx >= TOTAL_QUESTIONS) return;
+  currentIndex = idx;
+  $questionArea.classList.add('transitioning');
+  setTimeout(() => {
+    renderQuestion(idx);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, 250);
+}
+
+$btnPrev.addEventListener('click', () => {
+  // In phase 4, "previous" sometimes doesn't work
+  if (globalPhase >= 4 && Math.random() > 0.6) {
+    triggerGlitch();
+    triggerDisturbance();
+    return; // Can't go back
+  }
+  goToQuestion(currentIndex - 1);
+});
+
+$btnNext.addEventListener('click', () => {
+  const q = questions[currentIndex];
+
+  // Check if it's the final question
+  if (q.isFinal) {
+    showFinalReveal();
+    return;
+  }
+
+  // In phase 4, "next" sometimes triggers disturbance first
+  if (globalPhase >= 4 && Math.random() > 0.7) {
+    triggerDisturbance();
+    setTimeout(() => goToQuestion(currentIndex + 1), 600);
+    return;
+  }
+
+  if (currentIndex < TOTAL_QUESTIONS - 1) {
+    goToQuestion(currentIndex + 1);
+  }
+});
+
+// Keyboard navigation
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !$btnNext.disabled) {
+    $btnNext.click();
+  }
+  if (e.key === 'ArrowLeft' && !$btnPrev.disabled) {
+    $btnPrev.click();
+  }
+});
+
+// ==================== FINAL REVEAL ====================
+function showFinalReveal() {
+  // Full page takeover
+  const name = answers[16] || '……';
+
+  applyPhaseVisuals(4);
+  document.body.style.background = '#0a0505';
+
+  $card.style.transition = 'all 2s ease';
+  $card.style.borderColor = '#8b0000';
+  $card.style.boxShadow = '0 0 60px rgba(180,0,0,0.3), inset 0 0 60px rgba(180,0,0,0.05)';
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false });
+  const dateStr = now.toLocaleDateString('zh-CN');
+
+  $questionArea.innerHTML = `
+    <div style="text-align:center;padding:20px 0;">
+      <div style="font-size:13px;color:var(--text-secondary);letter-spacing:3px;margin-bottom:24px;">评 估 完 成</div>
+
+      <div style="font-size:52px;margin-bottom:8px;line-height:1;">🕯️</div>
+
+      <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:2;">
+        ${dateStr}<br>
+        ${timeStr}<br>
+        受访者：<span style="color:var(--danger);font-weight:600;">${escapeHtml(name)}</span>
+      </div>
+
+      <div style="width:60px;height:1px;background:var(--border);margin:24px auto;"></div>
+
+      <div style="font-size:15px;line-height:2.4;color:var(--text);margin-bottom:28px;">
+        您的问卷已提交。<br>
+        我们会在<span style="color:var(--danger);">七日之内</span>联系您。<br><br>
+        <span style="font-size:13px;color:var(--text-secondary);">
+          ——请保持<span style="color:var(--danger);">手机畅通</span>。<br>
+          ——请在<span style="color:var(--danger);">午夜</span>保持清醒。<br>
+          ——请确认<span style="color:var(--danger);">您的门已锁好</span>。
+        </span>
+      </div>
+
+      <div style="width:60px;height:1px;background:var(--border);margin:24px auto;"></div>
+
+      <p class="hidden-message" id="finalHiddenMsg" style="font-size:13px;text-align:center;line-height:2;opacity:0;transition:opacity 4s ease;">
+        她知道你做了这份问卷。<br>
+        她就在门外面。<br>
+        别开门。<br>
+        不要开门。<br>
+        千万不要开门。
+      </p>
+
+      <div style="margin-top:32px;font-size:11px;color:var(--text-secondary);opacity:0.5;">
+        问卷编号：<span id="surveyId">——</span>
+      </div>
+    </div>
+  `;
+
+  // Generate unsettling survey ID
+  const surveyId = 'GHOST-' + now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') +
+    String(now.getDate()).padStart(2, '0') + '-' +
+    String(Math.floor(Math.random() * 9000 + 1000));
+  setTimeout(() => {
+    const el = document.getElementById('surveyId');
+    if (el) el.textContent = surveyId;
+  }, 1500);
+
+  // Hide navigation
+  document.querySelector('.nav').style.display = 'none';
+  $progressFill.style.width = '100%';
+  $progressPercent.textContent = '100%';
+  document.title = '问卷已提交';
+
+  // Final flicker
+  setTimeout(() => {
+    document.body.style.animation = 'flicker 2s ease';
+    setTimeout(() => { document.body.style.animation = ''; }, 2000);
+  }, 2500);
+
+  // Disturbance chain
+  setTimeout(() => triggerDisturbance(), 3500);
+  setTimeout(() => triggerDisturbance(), 6000);
+  setTimeout(() => triggerDisturbance(), 8500);
+
+  // Slowly reveal hidden message
+  setTimeout(() => {
+    const hiddenMsg = document.getElementById('finalHiddenMsg');
+    if (hiddenMsg) hiddenMsg.style.opacity = '0.15';
+  }, 4000);
+  setTimeout(() => {
+    const hiddenMsg = document.getElementById('finalHiddenMsg');
+    if (hiddenMsg) hiddenMsg.style.opacity = '0.35';
+  }, 8000);
+  setTimeout(() => {
+    const hiddenMsg = document.getElementById('finalHiddenMsg');
+    if (hiddenMsg) hiddenMsg.style.opacity = '0.6';
+  }, 14000);
+
+  // Countdown
+  setTimeout(() => {
+    const countdown = document.createElement('div');
+    countdown.style.cssText = 'position:fixed;bottom:40px;right:40px;font-size:11px;color:rgba(192,57,43,0.5);letter-spacing:2px;z-index:9999;pointer-events:none;';
+    countdown.textContent = '头七将至';
+    document.body.appendChild(countdown);
+
+    let days = 7;
+    const timer = setInterval(() => {
+      days--;
+      if (days <= 0) {
+        countdown.textContent = '今夜';
+        countdown.style.color = 'rgba(192,57,43,0.9)';
+        countdown.style.fontSize = '14px';
+        clearInterval(timer);
+        setTimeout(() => { countdown.remove(); }, 5000);
+      } else {
+        countdown.textContent = '还有 ' + days + ' 天';
+      }
+    }, 8000);
+  }, 10000);
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ==================== INIT ====================
+function init() {
+  applyPhaseVisuals(1);
+  renderQuestion(0);
+
+  // Subtle random disturbances in later phases (ambient)
+  setInterval(() => {
+    if (globalPhase >= 3 && Math.random() > 0.75) {
+      // Very subtle - just a micro flicker
+      const origOpacity = $card.style.opacity;
+      $card.style.opacity = '0.97';
+      setTimeout(() => { $card.style.opacity = origOpacity || '1'; }, 80 + Math.random() * 40);
+    }
+  }, 8000 + Math.random() * 12000);
+
+  // Occasionally mess with the progress display in phase 3+
+  setInterval(() => {
+    if (globalPhase >= 3 && Math.random() > 0.7) {
+      const realPct = Math.round(((currentIndex) / TOTAL_QUESTIONS) * 100);
+      const fakePct = Math.min(99, realPct + Math.floor(Math.random() * 8 + 3));
+      $progressPercent.textContent = fakePct + '%';
+      setTimeout(() => {
+        $progressPercent.textContent = realPct + '%';
+      }, 1200 + Math.random() * 1500);
+    }
+  }, 15000 + Math.random() * 10000);
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>

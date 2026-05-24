@@ -180,59 +180,92 @@ const T=24;
 let idx=0, answers={}, gp=1, gcount=0, audioInitialized=false;
 let hoverCounts={};
 
-// ===================== HORROR AUDIO ENGINE =====================
+// ===================== HORROR AUDIO ENGINE v2 =====================
 const Audio = {
   ctx:null, master:null, droneGain:null, noiseGain:null, heartbeatGain:null,
   shepardGain:null, tinnitusGain:null, impactGain:null, noiseFilter:null,
-  phase:0, shepardNodes:[], shepardActive:false, hbTimer:null, init:false,
+  padGain:null, screamGain:null, lfoOsc:null, phase:0, shepardActive:false, hbTimer:null, init:false,
+  droneOscs:[], padOscs:[], lastPhase:0,
 
   async start(){
     if(this.init)return;
     this.ctx=new(window.AudioContext||window.webkitAudioContext)();
-    this.master=this.ctx.createGain(); this.master.gain.value=0.4; this.master.connect(this.ctx.destination);
+    // Master gain — much louder
+    this.master=this.ctx.createGain(); this.master.gain.value=0.85; this.master.connect(this.ctx.destination);
 
-    // Drone layer — low frequency sine waves
+    // === DRONE LAYER: 9 oscillators forming unsettled tone-clusters ===
     this.droneGain=this.ctx.createGain(); this.droneGain.gain.value=0;
-    const droneFilter=this.ctx.createBiquadFilter(); droneFilter.type='lowpass'; droneFilter.frequency.value=90;
+    const droneFilter=this.ctx.createBiquadFilter(); droneFilter.type='lowpass'; droneFilter.frequency.value=120;
     this.droneGain.connect(droneFilter); droneFilter.connect(this.master);
-    [28,42,57.5].forEach(f=>{
-      const o=this.ctx.createOscillator(); o.type='sine'; o.frequency.value=f; o.connect(this.droneGain); o.start();
+    // Microtonal cluster: fundamental + detuned copies + tritone + minor 2nd
+    [28,28.5,42,43.5,56,57,68,71,85].forEach((f,i)=>{
+      const o=this.ctx.createOscillator();
+      o.type=i<3?'sine':'triangle';
+      o.frequency.value=f;
+      o.connect(this.droneGain); o.start();
+      this.droneOscs.push(o);
     });
 
-    // Noise layer — filtered white noise (wind/breathing)
+    // === PAD LAYER: "string section" simulation (phase 3+) ===
+    this.padGain=this.ctx.createGain(); this.padGain.gain.value=0;
+    const padFilter=this.ctx.createBiquadFilter(); padFilter.type='lowpass'; padFilter.frequency.value=600;
+    this.padGain.connect(padFilter); padFilter.connect(this.master);
+    // Dissonant intervals for horror string effect
+    [110,116.5,146.8,156,220,233,277].forEach((f,i)=>{
+      const o=this.ctx.createOscillator();
+      o.type='sawtooth';
+      o.frequency.value=f;
+      const g=this.ctx.createGain(); g.gain.value=0.04;
+      o.connect(g); g.connect(this.padGain); o.start();
+      this.padOscs.push({osc:o,gain:g});
+      // Slow individual LFO modulation for "string section" movement
+      const lfo=this.ctx.createOscillator();
+      lfo.type='sine'; lfo.frequency.value=0.08+Math.random()*0.15;
+      const lfoG=this.ctx.createGain(); lfoG.gain.value=1.5+Math.random()*3;
+      lfo.connect(lfoG); lfoG.connect(g.gain);
+      lfo.start();
+    });
+
+    // === NOISE LAYER: filtered wind/breath ===
     this.noiseGain=this.ctx.createGain(); this.noiseGain.gain.value=0;
-    this.noiseFilter=this.ctx.createBiquadFilter(); this.noiseFilter.type='bandpass'; this.noiseFilter.frequency.value=350; this.noiseFilter.Q.value=0.4;
+    this.noiseFilter=this.ctx.createBiquadFilter(); this.noiseFilter.type='bandpass'; this.noiseFilter.frequency.value=380; this.noiseFilter.Q.value=0.35;
     this.noiseGain.connect(this.noiseFilter); this.noiseFilter.connect(this.master);
     const bs=this.ctx.sampleRate*4, buf=this.ctx.createBuffer(1,bs,this.ctx.sampleRate);
-    const d=buf.getChannelData(0); for(let i=0;i<bs;i++)d[i]=Math.random()*2-1;
+    const d=buf.getChannelData(0); for(let i=0;i<bs;i++)d[i]=(Math.random()*2-1)*0.7;
     const ns=this.ctx.createBufferSource(); ns.buffer=buf; ns.loop=true; ns.connect(this.noiseGain); ns.start();
 
-    // Tinnitus — very high frequency
+    // === TINNITUS: high freq ===
     this.tinnitusGain=this.ctx.createGain(); this.tinnitusGain.gain.value=0;
-    const tinOsc=this.ctx.createOscillator(); tinOsc.type='sine'; tinOsc.frequency.value=8200; tinOsc.connect(this.tinnitusGain); this.tinnitusGain.connect(this.master); tinOsc.start();
+    const tinOsc=this.ctx.createOscillator(); tinOsc.type='sine'; tinOsc.frequency.value=8600; tinOsc.connect(this.tinnitusGain); this.tinnitusGain.connect(this.master); tinOsc.start();
 
-    // Impact channel
+    // === IMPACT channel for low-end thuds ===
     this.impactGain=this.ctx.createGain(); this.impactGain.gain.value=0;
-    const impFilter=this.ctx.createBiquadFilter(); impFilter.type='lowpass'; impFilter.frequency.value=60;
+    const impFilter=this.ctx.createBiquadFilter(); impFilter.type='lowpass'; impFilter.frequency.value=80;
     this.impactGain.connect(impFilter); impFilter.connect(this.master);
 
-    this.init=true;
-    this._heartbeat();
+    // === GLOBAL LFO for slow "breathing" modulation on drone ===
+    this.lfoOsc=this.ctx.createOscillator(); this.lfoOsc.type='sine'; this.lfoOsc.frequency.value=0.05;
+    const lfoG=this.ctx.createGain(); lfoG.gain.value=0.5;
+    this.lfoOsc.connect(lfoG); lfoG.connect(this.droneGain.gain);
+    this.lfoOsc.start();
+
+    this.init=true; this._heartbeat();
   },
 
   _heartbeat(){
-    const bpm=this.phase>=4?105:this.phase>=3?75:this.phase>=2?55:0;
-    if(bpm===0){if(this.hbTimer)clearTimeout(this.hbTimer);this.hbTimer=setTimeout(()=>this._heartbeat(),2000);return;}
-    const dur=0.18, env=this.ctx.createGain(), osc=this.ctx.createOscillator();
-    osc.type='sine'; osc.frequency.value=32;
-    env.gain.setValueAtTime(0,this.ctx.currentTime);
-    env.gain.linearRampToValueAtTime(0.6,this.ctx.currentTime+0.04);
-    env.gain.exponentialRampToValueAtTime(0.001,this.ctx.currentTime+dur);
-    osc.connect(env); env.connect(this.ctx.destination);
-    // separate from master so heartbeat cuts through
-    const hbVol=this.phase>=4?0.18:this.phase>=3?0.09:0.03;
-    env.gain.value=0; // reset before scheduling
-    osc.start(); osc.stop(this.ctx.currentTime+dur);
+    const bpm=this.phase>=4?115:this.phase>=3?78:this.phase>=2?52:0;
+    if(bpm===0){this.hbTimer=setTimeout(()=>this._heartbeat(),2000);return;}
+    const t=this.ctx.currentTime, dur=0.22;
+    // Double thump for more realistic heartbeat
+    [0,0.15].forEach(delay=>{
+      const env=this.ctx.createGain(), osc=this.ctx.createOscillator();
+      osc.type='sine'; osc.frequency.value=30;
+      env.gain.setValueAtTime(0,t+delay);
+      env.gain.linearRampToValueAtTime(0.7,t+delay+0.03);
+      env.gain.exponentialRampToValueAtTime(0.001,t+delay+dur);
+      osc.connect(env); env.connect(this.ctx.destination);
+      osc.start(t+delay); osc.stop(t+delay+dur);
+    });
     this.hbTimer=setTimeout(()=>this._heartbeat(),60000/bpm);
   },
 
@@ -240,31 +273,25 @@ const Audio = {
     if(this.shepardActive)return;
     this.shepardActive=true;
     this.shepardGain=this.ctx.createGain(); this.shepardGain.gain.value=0;
-    const sf=this.ctx.createBiquadFilter(); sf.type='lowpass'; sf.frequency.value=1200;
+    const sf=this.ctx.createBiquadFilter(); sf.type='lowpass'; sf.frequency.value=1500;
     this.shepardGain.connect(sf); sf.connect(this.master);
-
-    const oscs=[];
     const loop=()=>{
       if(!this.shepardActive)return;
-      // Create a set of octave-spaced tones that rise together
-      const now=this.ctx.currentTime;
-      const dur=12; // seconds per cycle
-      const baseFreq=40;
-      [0.5,1,2,4,8,16].forEach((mult,i)=>{
-        const o=this.ctx.createOscillator(); o.type='sine';
-        o.frequency.setValueAtTime(baseFreq*mult,now);
-        o.frequency.linearRampToValueAtTime(baseFreq*mult*2,now+dur);
+      const now=this.ctx.currentTime, dur=10;
+      const base=35;
+      [0.25,0.5,1,2,4,8,16,32].forEach((m,i)=>{
+        const o=this.ctx.createOscillator(); o.type=i%2?'sine':'triangle';
+        o.frequency.setValueAtTime(base*m,now);
+        o.frequency.linearRampToValueAtTime(base*m*2.2,now+dur);
         const env=this.ctx.createGain();
-        // Bell curve amplitude
-        const center=3;
-        const amp=Math.exp(-Math.pow(i-center,2)/4)*0.08;
+        const c=4, amp=Math.exp(-Math.pow(i-c,2)/3)*0.1;
         env.gain.setValueAtTime(amp,now);
-        env.gain.setValueAtTime(amp,now+dur*0.95);
+        env.gain.setValueAtTime(amp,now+dur*0.9);
         env.gain.linearRampToValueAtTime(0.001,now+dur);
         o.connect(env); env.connect(this.shepardGain);
         o.start(now); o.stop(now+dur);
       });
-      setTimeout(loop,dur*950);
+      setTimeout(loop,dur*920);
     };
     loop();
   },
@@ -272,37 +299,133 @@ const Audio = {
   setPhase(p){
     if(!this.init)return;
     if(p===this.phase)return;
-    this.phase=p;
-    const t=this.ctx.currentTime, s=3;
+    this.lastPhase=this.phase; this.phase=p;
+    const t=this.ctx.currentTime, s=2.5;
+    // Much higher gain levels
     const l={
-      1:{d:0.025,n:0.008,h:0,t:0,i:false},
-      2:{d:0.06,n:0.03,h:0.03,t:0,i:false},
-      3:{d:0.12,n:0.06,h:0.08,t:0.012,i:true},
-      4:{d:0.18,n:0.10,h:0.15,t:0.025,i:true},
+      1:{d:0.04,n:0.012, h:0,   t:0,     p:0,    i:false},
+      2:{d:0.10,n:0.04,  h:0.04,t:0,     p:0,    i:false},
+      3:{d:0.18,n:0.08,  h:0.10,t:0.015, p:0.12, i:true},
+      4:{d:0.28,n:0.14,  h:0.20,t:0.030, p:0.25, i:true},
     }[p]||l[1];
     this.droneGain.gain.linearRampToValueAtTime(l.d,t+s);
     this.noiseGain.gain.linearRampToValueAtTime(l.n,t+s);
     this.tinnitusGain.gain.linearRampToValueAtTime(l.t,t+s);
-    if(l.i && !this.shepardActive) this._shepard();
-    if(this.shepardGain) this.shepardGain.gain.linearRampToValueAtTime(l.i?0.08:0,t+s);
-    // Heartbeat handled by _heartbeat loop
+    this.padGain.gain.linearRampToValueAtTime(l.p,t+s);
+    if(l.i && !this.shepardActive)this._shepard();
+    if(this.shepardGain)this.shepardGain.gain.linearRampToValueAtTime(l.i?0.12:0,t+s);
     this._heartbeat();
-    // Noise filter shifts darker in later phases
-    if(this.noiseFilter){
-      this.noiseFilter.frequency.linearRampToValueAtTime(p>=4?180:p>=3?280:350,t+s);
+    if(this.noiseFilter)this.noiseFilter.frequency.linearRampToValueAtTime(p>=4?140:p>=3?250:380,t+s);
+  },
+
+  // ======== JUMP SCARE SYSTEM ========
+  jumpscare(type,intensity){
+    if(!this.init)return;
+    const t=this.ctx.currentTime, I=Math.min(3,intensity||1);
+    const vol=I/3; // 0.33, 0.67, 1.0
+
+    // Helper: create osc with envelope
+    const oscEnv=(freq,wave,attack,decay,volMul,filterFreq,filterQ)=>{
+      const o=this.ctx.createOscillator(); o.type=wave; o.frequency.value=freq;
+      const env=this.ctx.createGain(), flt=this.ctx.createBiquadFilter();
+      env.gain.setValueAtTime(0,t);
+      env.gain.linearRampToValueAtTime(0.9*volMul*vol,t+attack);
+      env.gain.exponentialRampToValueAtTime(0.001,t+attack+decay);
+      flt.type='lowpass'; flt.frequency.value=filterFreq; flt.Q.value=filterQ;
+      o.connect(flt); flt.connect(env); env.connect(this.master);
+      o.start(t); o.stop(t+attack+decay+0.1);
+    };
+
+    if(type==='stinger'||type==='all'){
+      // Dissonant orchestral hit: multiple detuned sawtooths
+      [55,58,62,69,74,82,92,110,138].forEach(f=>{
+        oscEnv(f,'sawtooth',0.02,0.8+Math.random()*0.6,1.0,400+I*200,1.5);
+      });
+      // High screech layer
+      oscEnv(1800,'sawtooth',0.03,0.35,0.5,2500,3);
+      oscEnv(2400,'square',0.03,0.3,0.4,3000,4);
+      // Noise burst
+      const nBuf=this.ctx.createBuffer(1,this.ctx.sampleRate*0.5,this.ctx.sampleRate);
+      const nd=nBuf.getChannelData(0);
+      for(let i=0;i<nd.length;i++)nd[i]=(Math.random()*2-1)*Math.exp(-i/(this.ctx.sampleRate*0.06));
+      const nSrc=this.ctx.createBufferSource(); nSrc.buffer=nBuf;
+      const nEnv=this.ctx.createGain(); nEnv.gain.setValueAtTime(0.5*vol,t); nEnv.gain.exponentialRampToValueAtTime(0.001,t+0.4);
+      nSrc.connect(nEnv); nEnv.connect(this.master); nSrc.start(t); nSrc.stop(t+0.5);
     }
+
+    if(type==='subdrop'||type==='all'){
+      // Sub-bass drop
+      const sub=this.ctx.createOscillator(); sub.type='sine';
+      sub.frequency.setValueAtTime(65,t);
+      sub.frequency.exponentialRampToValueAtTime(18,t+0.7);
+      const subEnv=this.ctx.createGain();
+      subEnv.gain.setValueAtTime(0,t); subEnv.gain.linearRampToValueAtTime(0.95*vol,t+0.02);
+      subEnv.gain.exponentialRampToValueAtTime(0.001,t+0.8);
+      sub.connect(subEnv); subEnv.connect(this.master);
+      sub.start(t); sub.stop(t+0.9);
+      // Sub rumble noise
+      const rBuf=this.ctx.createBuffer(1,this.ctx.sampleRate*0.6,this.ctx.sampleRate);
+      const rd=rBuf.getChannelData(0);
+      for(let i=0;i<rd.length;i++)rd[i]=(Math.random()*2-1)*Math.exp(-i/(this.ctx.sampleRate*0.15));
+      const rSrc=this.ctx.createBufferSource(); rSrc.buffer=rBuf;
+      const rEnv=this.ctx.createGain(); const rFlt=this.ctx.createBiquadFilter();
+      rFlt.type='lowpass'; rFlt.frequency.value=70;
+      rEnv.gain.setValueAtTime(0.6*vol,t); rEnv.gain.exponentialRampToValueAtTime(0.001,t+0.6);
+      rSrc.connect(rFlt); rFlt.connect(rEnv); rEnv.connect(this.master);
+      rSrc.start(t); rSrc.stop(t+0.6);
+    }
+
+    if(type==='scream'||type==='all'){
+      // High-pitched violin-like scream
+      [2000,2400,3000].forEach((f,i)=>{
+        const o=this.ctx.createOscillator(); o.type='sawtooth';
+        o.frequency.setValueAtTime(f,t);
+        o.frequency.linearRampToValueAtTime(f*(1.5+i*0.3),t+0.15);
+        o.frequency.exponentialRampToValueAtTime(400,t+0.5);
+        const env=this.ctx.createGain(), flt=this.ctx.createBiquadFilter();
+        flt.type='bandpass'; flt.frequency.value=f; flt.Q.value=5;
+        env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(0.35*vol,t+0.04);
+        env.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+        o.connect(flt); flt.connect(env); env.connect(this.master);
+        o.start(t); o.stop(t+0.6);
+      });
+    }
+
+    if(type==='impact'||type==='all'){
+      // Heavy percussive impact
+      [28,35,48].forEach((f,i)=>{
+        const o=this.ctx.createOscillator(); o.type='sine';
+        o.frequency.setValueAtTime(f,t);
+        o.frequency.exponentialRampToValueAtTime(f*0.4,t+0.25);
+        const env=this.ctx.createGain();
+        env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(0.8*vol,t+0.01);
+        env.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+        o.connect(env); env.connect(this.master);
+        o.start(t); o.stop(t+0.35);
+      });
+    }
+  },
+
+  // Phase transition sting
+  phaseSting(from,to){
+    if(!this.init||from===0)return;
+    const intensity=to>=4?3:to>=3?2:1;
+    if(to>=4)this.jumpscare('all',3);
+    else if(to>=3)this.jumpscare('stinger',2);
+    // Sub drop on any phase transition
+    setTimeout(()=>this.jumpscare('subdrop',intensity),150);
   },
 
   impact(){
     if(!this.init||this.phase<3)return;
     const t=this.ctx.currentTime;
-    [30,42].forEach(f=>{
+    [28,36,50].forEach(f=>{
       const o=this.ctx.createOscillator(),env=this.ctx.createGain();
       o.type='sine'; o.frequency.value=f;
-      env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(0.3,t+0.03);
-      env.gain.exponentialRampToValueAtTime(0.001,t+0.4);
-      o.connect(env); env.connect(this.impactGain); this.impactGain.gain.value=0.5;
-      o.start(t); o.stop(t+0.4);
+      env.gain.setValueAtTime(0,t); env.gain.linearRampToValueAtTime(0.5,t+0.02);
+      env.gain.exponentialRampToValueAtTime(0.001,t+0.45);
+      o.connect(env); env.connect(this.impactGain); this.impactGain.gain.value=0.7;
+      o.start(t); o.stop(t+0.5);
     });
     this.impactGain.gain.linearRampToValueAtTime(0,t+0.5);
   },
@@ -360,6 +483,7 @@ $tq.textContent=T;
 
 // ===================== PHASE VISUALS =====================
 function applyPhase(p){
+  const prevPhase=gp;
   const r=document.documentElement.style;
   const ph={
     1:{bg:'#f5f6f8',cb:'#ffffff',tx:'#2c3e50',ts:'#7f8c8d',a:'#3498db',ah:'#2980b9',b:'#e0e4e8',pbg:'#e8ecf0',pf:'#3498db',obg:'#fafbfc',oh:'#eef4fb',os:'#e3f0fc',osb:'#3498db',sh:'0 2px 16px rgba(0,0,0,0.06)',logo:'心理评估中心',title:'心理健康评估问卷',sub:'请根据您的实际情况如实作答',vi:0,gr:0,br:'12s'},
@@ -373,6 +497,8 @@ function applyPhase(p){
   if(p>=3){$sl.classList.add('on');}else{$sl.classList.remove('on');}
   if(p>=4){$bd.classList.add('active');}else{$bd.classList.remove('active');}
   Audio.setPhase(p);
+  // Trigger jump scare on phase transitions
+  if(prevPhase!==0&&prevPhase!==p)Audio.phaseSting(prevPhase,p);
 }
 
 // ===================== RENDER =====================
@@ -415,6 +541,11 @@ function render(i){
   if(q.e==='glitch')triggerGlitch();
   else if(q.e==='flicker')triggerFlicker();
   else if(q.e==='shake'){setTimeout(()=>$card.classList.add('shake-card'),1200);setTimeout(()=>$card.classList.remove('shake-card'),1800);}
+  // Jump scare triggers for key questions
+  if(i===13)setTimeout(()=>Audio.jumpscare('subdrop',1),800);           // 红衣男孩
+  if(i===18)setTimeout(()=>Audio.jumpscare('stinger',2),1000);          // 问卷知道你的答案
+  if(i===20)setTimeout(()=>Audio.jumpscare('subdrop',1),600);           // 冥婚
+  if(i===23)setTimeout(()=>Audio.jumpscare('all',3),500);              // 回头看 - MAX
   // Dynamic content
   if(q.dynamic)q.dynamic();
   // Nav
@@ -437,7 +568,7 @@ function triggerDisturbance(){
   ()=>{$card.style.borderColor='#c0392b';setTimeout(()=>{$card.style.borderColor='';},350);},
   ()=>{const ov=document.createElement('div');ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;pointer-events:none;display:flex;align-items:center;justify-content:center;';ov.innerHTML='<span style="font-size:52px;color:rgba(192,57,43,0.5);font-weight:700;letter-spacing:6px;">你 不 是 一 个 人</span>';document.body.appendChild(ov);setTimeout(()=>ov.remove(),700+Math.random()*500);},
   ];
-  if(gp>=4){d.push(()=>{document.body.style.filter='invert(0.85)';setTimeout(()=>{document.body.style.filter='';},100);},()=>{$card.style.transform='rotate('+(Math.random()*2-1)+'deg)';setTimeout(()=>{$card.style.transform='';},180);},()=>{Audio.impact();});}
+  if(gp>=4){d.push(()=>{document.body.style.filter='invert(0.85)';setTimeout(()=>{document.body.style.filter='';},100);},()=>{$card.style.transform='rotate('+(Math.random()*2-1)+'deg)';setTimeout(()=>{$card.style.transform='';},180);},()=>{Audio.impact();},()=>{Audio.jumpscare('impact',1);},()=>{Audio.jumpscare('subdrop',1);});}
   d[Math.floor(Math.random()*d.length)]();
   if(gp>=4&&Math.random()>0.55){setTimeout(()=>{const d2=d[Math.floor(Math.random()*d.length)];d2();},1400+Math.random()*2000);}
 }
@@ -469,6 +600,10 @@ function showFinal(){
   document.querySelector('.nav').style.display='none'; $pf.style.width='100%'; $pp.textContent='100%'; document.title='问卷已提交';
   setTimeout(()=>{document.body.style.animation='flicker 2.2s ease';setTimeout(()=>{document.body.style.animation='';},2200);},2000);
   setTimeout(()=>triggerDisturbance(),3000); setTimeout(()=>triggerDisturbance(),5500); setTimeout(()=>triggerDisturbance(),8000);
+  // Jump scare chain on final page
+  setTimeout(()=>Audio.jumpscare('subdrop',2),2500);
+  setTimeout(()=>Audio.jumpscare('scream',2),5000);
+  setTimeout(()=>Audio.jumpscare('all',3),8000);
   // Hidden message reveal
   [3500,7000,12000].forEach((d,i)=>{setTimeout(()=>{const m=document.getElementById('finalHM');if(m)m.style.opacity=[0.1,0.25,0.5][i];},d);});
   // Head-seven countdown

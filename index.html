@@ -178,7 +178,7 @@
 (function(){
 const T=24;
 let idx=0, answers={}, gp=1, gcount=0, audioInitialized=false;
-let hoverCounts={};
+let hoverCounts={}, stayTimer=null, stayMsgTimer=null, stayClickCount=0;
 
 // ===================== HORROR AUDIO ENGINE v2 =====================
 const Audio = {
@@ -523,11 +523,19 @@ function render(i){
   }
   if(q.h)h+='<p class="hidden-msg" style="margin-top:16px;font-size:12px;text-align:center;">'+q.h+'</p>';
   $qa.innerHTML=h; $qa.classList.remove('trans');
+  // Clear stay timers
+  if(stayTimer)clearTimeout(stayTimer); if(stayMsgTimer)clearTimeout(stayMsgTimer); stayClickCount=0;
   // Bind
   if(!q.type||q.type==='radio'){
     $qa.querySelectorAll('.option').forEach(el=>{
       el.addEventListener('click',function(){
-        const oi=parseInt(this.dataset.opt); answers[i]=oi;
+        const oi=parseInt(this.dataset.opt);
+        // Change detection: phase 3+ re-selecting triggers unease
+        if(ph>=3 && answers[i]!==undefined && answers[i]!==oi) {
+          stayClickCount++;
+          if(stayClickCount>=2){Audio.jumpscare('subdrop',1);stayClickCount=0;}
+        }
+        answers[i]=oi;
         $qa.querySelectorAll('.option').forEach(o=>o.classList.remove('sel'));
         this.classList.add('sel'); $bn.disabled=false;
         if(ph>=3&&oi===q.o.length-1){triggerDisturbance();}
@@ -540,6 +548,20 @@ function render(i){
   if(q.e==='glitch')triggerGlitch();
   else if(q.e==='flicker')triggerFlicker();
   else if(q.e==='shake'){setTimeout(()=>$card.classList.add('shake-card'),1200);setTimeout(()=>$card.classList.remove('shake-card'),1800);}
+  // Stay detection: questionnaire notices hesitation
+  if(!q.final && !q.type==='statement') {
+    stayTimer=setTimeout(()=>{
+      $card.classList.add('shake-card'); setTimeout(()=>$card.classList.remove('shake-card'),500);
+    },15000);
+    stayMsgTimer=setTimeout(()=>{
+      const msg=document.createElement('div');
+      msg.style.cssText='text-align:center;margin-top:18px;opacity:0;transition:opacity 0.6s;';
+      msg.innerHTML='<span style="color:var(--danger);font-size:12px;animation:textFade 2s ease-in-out infinite">'+(gp>=3?'你在害怕什么？':'您在犹豫什么？')+'</span>';
+      $qa.appendChild(msg);
+      requestAnimationFrame(()=>{msg.style.opacity='1';});
+      setTimeout(()=>{msg.style.opacity='0';setTimeout(()=>msg.remove(),600);},3500);
+    },30000);
+  }
   // Jump scare triggers for key questions
   if(i===13)setTimeout(()=>Audio.jumpscare('subdrop',1),800);           // 镜子两边谁是真的
   if(i===18)setTimeout(()=>Audio.jumpscare('stinger',2),1000);          // 真的是你自己选的吗
@@ -603,8 +625,38 @@ function showFinal(){
   setTimeout(()=>Audio.jumpscare('subdrop',2),2500);
   setTimeout(()=>Audio.jumpscare('scream',2),5000);
   setTimeout(()=>Audio.jumpscare('all',3),8000);
+  // Cursor disappears briefly on final page
+  setTimeout(()=>{document.body.style.cursor='none';setTimeout(()=>{document.body.style.cursor='auto';},1500);},6000);
+  setTimeout(()=>{document.body.style.cursor='none';setTimeout(()=>{document.body.style.cursor='auto';},2500);},16000);
   // Hidden message reveal
   [3500,7000,12000].forEach((d,i)=>{setTimeout(()=>{const m=document.getElementById('finalHM');if(m)m.style.opacity=[0.1,0.25,0.5][i];},d);});
+  // ---- Fake end screen: black overlay fades in, then fades out ----
+  setTimeout(()=>{
+    const overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:99999;opacity:0;transition:opacity 1.5s;display:flex;align-items:center;justify-content:center;pointer-events:none;';
+    overlay.innerHTML='<div style="text-align:center;color:#555;font-size:15px;letter-spacing:2px;">问卷结束了。<br><span style="font-size:11px;margin-top:12px;display:block;">你可以关掉这个页面了。</span></div>';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(()=>{overlay.style.opacity='1';});
+    // Stay black for 3s, then fade back
+    setTimeout(()=>{
+      overlay.style.opacity='0';
+      setTimeout(()=>overlay.remove(),1500);
+      // When we come back, the hidden message is more visible
+      const m=document.getElementById('finalHM'); if(m)m.style.opacity='0.7';
+      Audio.jumpscare('subdrop',2);
+    },4000);
+  },14000);
+  // ---- Fake close: card disappears, then snaps back ----
+  setTimeout(()=>{
+    $card.style.transition='opacity 1.5s ease';
+    $card.style.opacity='0';
+    setTimeout(()=>{
+      $card.style.opacity='1';
+      document.body.style.animation='flicker 0.8s ease';
+      setTimeout(()=>document.body.style.animation='',800);
+      Audio.jumpscare('scream',2);
+    },2200);
+  },21000);
   // Head-seven countdown
   setTimeout(()=>{
     const cd=document.createElement('div');
@@ -622,6 +674,8 @@ applyPhase(1); render(0);
 // Ambient micro-disturbances
 setInterval(()=>{if(gp>=3&&Math.random()>0.72){const o=$card.style.opacity;$card.style.opacity='0.96';setTimeout(()=>{$card.style.opacity=o||'1';},60+Math.random()*50);}},10000+Math.random()*10000);
 setInterval(()=>{if(gp>=3&&Math.random()>0.65){const rp=Math.round((idx/T)*100),fp=Math.min(99,rp+Math.floor(Math.random()*10+3));$pp.textContent=fp+'%';setTimeout(()=>{$pp.textContent=rp+'%';},1000+Math.random()*1800);}},18000+Math.random()*12000);
+// Phase 4: cursor randomly disappears
+setInterval(()=>{if(gp>=4&&Math.random()>0.55){document.body.style.cursor='none';setTimeout(()=>{document.body.style.cursor='auto';},800+Math.random()*1500);}},12000+Math.random()*8000);
 
 // Option hover corruption in phase 3+
 document.addEventListener('mouseover',e=>{
